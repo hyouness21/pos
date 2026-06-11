@@ -204,7 +204,6 @@
     "Generate": "توليد",
     "Scan barcode…": "امسح الباركود…",
     "Barcode not found": "الباركود غير موجود",
-    "Search items…": "ابحث عن منتج…",
     "Search clients…": "ابحث عن عميل…",
     "Search dealers…": "ابحث عن مورد…",
     "Search categories…": "ابحث عن فئة…",
@@ -225,7 +224,7 @@
     "this month": "هذا الشهر",
     "Add": "إضافة",
     "After Expenses": "بعد المصروفات",
-    "records": "سجلات"
+    "records": "سجلات",
     "Discount": "خصم",
     "Scan Barcode": "مسح الباركود",
     "Point camera at a barcode": "وجّه الكاميرا نحو الباركود",
