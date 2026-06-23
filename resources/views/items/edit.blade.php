@@ -61,7 +61,7 @@
                  class="flex items-center justify-between text-sm pt-1 border-t border-gray-200">
                 <span class="text-gray-500">{{ __('Profit per unit') }}</span>
                 <span :class="(sell - cost) >= 0 ? 'text-green-600 font-bold' : 'text-red-500 font-bold'"
-                      x-text="'$' + (sell - cost).toFixed(2) + ' (' + (sell > 0 ? Math.round((sell - cost) / sell * 100) : 0) + '% margin)'">
+                      x-text="'$' + (sell - cost).toFixed(2) + ' (' + (cost > 0 ? Math.round((sell - cost) / cost * 100) : 0) + '% margin)'">
                 </span>
             </div>
         </div>

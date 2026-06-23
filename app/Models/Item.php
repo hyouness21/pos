@@ -58,7 +58,7 @@ class Item extends Model
 
     public function marginPercent(): ?float
     {
-        if ($this->cost_price === null || $this->price == 0) return null;
-        return round(($this->price - $this->cost_price) / $this->price * 100, 1);
+        if ($this->cost_price === null || $this->cost_price == 0) return null;
+        return round(($this->price - $this->cost_price) / $this->cost_price * 100, 1);
     }
 }
