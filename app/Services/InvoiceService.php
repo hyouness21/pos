@@ -45,6 +45,48 @@ class InvoiceService
         });
     }
 
+    public function update(Invoice $invoice, array $data, array $lines): Invoice
+    {
+        return DB::transaction(function () use ($invoice, $data, $lines) {
+            foreach ($invoice->items as $old) {
+                Item::where('id', $old->item_id)
+                    ->update(['stock' => DB::raw('stock + ' . (int) $old->quantity)]);
+            }
+
+            $invoice->items()->delete();
+
+            $total = 0;
+            foreach ($lines as $line) {
+                $total += $line['unit_price'] * $line['quantity'];
+            }
+            $discount   = (float) ($data['discount'] ?? 0);
+            $grandTotal = max(0, $total - $discount);
+
+            $invoice->update([
+                'payment_method' => $data['payment_method'],
+                'notes'          => $data['notes'] ?? null,
+                'discount'       => $discount,
+                'total_amount'   => $grandTotal,
+                'status'         => $data['payment_method'] === 'cash' ? 'paid' : 'pending',
+                'amount_paid'    => $data['payment_method'] === 'cash' ? $grandTotal : 0,
+            ]);
+
+            foreach ($lines as $line) {
+                $invoice->items()->create([
+                    'item_id'    => $line['item_id'],
+                    'quantity'   => $line['quantity'],
+                    'unit_price' => $line['unit_price'],
+                    'subtotal'   => $line['unit_price'] * $line['quantity'],
+                ]);
+
+                Item::where('id', $line['item_id'])
+                    ->update(['stock' => DB::raw('GREATEST(CAST(stock AS SIGNED) - ' . (int) $line['quantity'] . ', 0)')]);
+            }
+
+            return $invoice->fresh();
+        });
+    }
+
     public function markPaid(Invoice $invoice): void
     {
         $invoice->update(['status' => 'paid']);

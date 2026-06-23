@@ -148,7 +148,7 @@
         {{-- Category tabs --}}
         <div class="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
             <template x-for="cat in categories" :key="cat.id">
-                <button type="button" @click="activeCategory = cat.id"
+                <button type="button" @click="activeCategory = cat.id; itemSearch = ''"
                         class="shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
                         :class="activeCategory === cat.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'">
                     <span x-text="cat.name"></span>
@@ -156,12 +156,23 @@
             </template>
         </div>
 
+        {{-- Item search --}}
+        <div class="relative mb-3">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                </svg>
+            </span>
+            <input type="text" x-model="itemSearch"
+                   placeholder="{{ __('Search items…') }}"
+                   autocomplete="off"
+                   class="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50">
+        </div>
+
         {{-- Items grid --}}
         <div class="grid grid-cols-2 gap-2">
-            <template x-for="cat in categories" :key="'cat-' + cat.id">
-                <template x-for="item in cat.items" :key="item.id">
+            <template x-for="item in filteredItems()" :key="item.id">
                     <button type="button"
-                            x-show="activeCategory === cat.id"
                             @click="addItem(item)"
                             :disabled="item.stock <= 0 || orderedQty(item.id) >= item.stock"
                             :class="item.stock <= 0 || orderedQty(item.id) >= item.stock
@@ -178,7 +189,6 @@
                            :class="item.stock <= 0 ? 'text-red-400 font-medium' : 'text-gray-400'"
                            x-text="item.stock <= 0 ? '{{ __('Out of stock') }}' : (item.stock - orderedQty(item.id) <= 0 ? '{{ __('Max reached') }}' : (item.stock - orderedQty(item.id)) + ' {{ __('left') }}')"></p>
                     </button>
-                </template>
             </template>
         </div>
 
@@ -347,6 +357,7 @@ function invoiceBuilder(categories) {
         paymentMethod: 'cash',
         notes: '',
         lines: [],
+        itemSearch: '',
         discountType: 'fixed',
         discountRaw: 0,
         scanMsg: '',
@@ -407,6 +418,15 @@ function invoiceBuilder(categories) {
                 this.scanMsg = '{{ __('Barcode not found') }}: ' + code;
             }
             this._scanTimer = setTimeout(() => this.scanMsg = '', 2500);
+        },
+
+        filteredItems() {
+            if (this.itemSearch.trim()) {
+                const q = this.itemSearch.toLowerCase();
+                return this.categories.flatMap(c => c.items).filter(i => i.name.toLowerCase().includes(q));
+            }
+            const cat = this.categories.find(c => c.id === this.activeCategory);
+            return cat ? cat.items : [];
         },
 
         orderedQty(itemId) {

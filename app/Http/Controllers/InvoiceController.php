@@ -86,6 +86,60 @@ class InvoiceController extends Controller
         return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice created.');
     }
 
+    public function edit(Invoice $invoice): View
+    {
+        $invoice->load('items.item');
+
+        $stockAdjustments = $invoice->items
+            ->groupBy('item_id')
+            ->map(fn ($items) => $items->sum('quantity'));
+
+        $categories = Category::with('items')->get();
+        $categories->each(function ($cat) use ($stockAdjustments) {
+            $cat->items->each(function ($item) use ($stockAdjustments) {
+                $item->stock += $stockAdjustments->get($item->id, 0);
+            });
+        });
+
+        $existingLines = $invoice->items
+            ->groupBy('item_id')
+            ->map(function ($items) {
+                $paid      = $items->where('unit_price', '>', 0);
+                $free      = $items->where('unit_price', '=', 0);
+                $itemModel = $items->first()->item;
+                $unitPrice = $paid->first()?->unit_price ?? $itemModel->price;
+
+                return [
+                    'item_id'        => (int) $itemModel->id,
+                    'name'           => $itemModel->name,
+                    'original_price' => (float) $unitPrice,
+                    'unit_price'     => (float) $unitPrice,
+                    'stock'          => (int) $itemModel->stock,
+                    'quantity'       => (int) ($paid->sum('quantity') + $free->sum('quantity')),
+                    'free_qty'       => (int) $free->sum('quantity'),
+                ];
+            })->values();
+
+        return view('invoices.edit', compact('invoice', 'categories', 'existingLines'));
+    }
+
+    public function update(Request $request, Invoice $invoice, InvoiceService $service): RedirectResponse
+    {
+        $request->validate([
+            'payment_method'     => 'required|in:cash,pay_later',
+            'notes'              => 'nullable|string',
+            'lines'              => 'required|array|min:1',
+            'lines.*.item_id'    => 'required|exists:items,id',
+            'lines.*.quantity'   => 'required|integer|min:1',
+            'lines.*.unit_price' => 'required|numeric|min:0',
+            'discount'           => 'nullable|numeric|min:0',
+        ]);
+
+        $service->update($invoice, $request->only(['payment_method', 'notes', 'discount']), $request->lines);
+
+        return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice updated.');
+    }
+
     public function show(Invoice $invoice): View
     {
         $invoice->load('customer', 'items.item');

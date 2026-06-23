@@ -54,7 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('invoices.status');
     Route::post('/invoices/{invoice}/payment', [InvoiceController::class, 'recordPayment'])->name('invoices.payment');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
-    Route::resource('invoices', InvoiceController::class)->except(['edit', 'update']);
+    Route::resource('invoices', InvoiceController::class);
 
     // Dealers
     Route::resource('dealers', DealerController::class);
