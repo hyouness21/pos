@@ -99,11 +99,14 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 function barcodeField(initial) {
     return {
         barcode: initial || '',
         mode: initial ? 'custom' : 'custom',
+        cameraOpen: false,
+        _scanner: null,
         render() {
             if (!this.barcode || typeof JsBarcode === 'undefined') return;
             try {
@@ -116,6 +119,32 @@ function barcodeField(initial) {
         generate() {
             this.barcode = String(Math.floor(Math.random() * 9e11) + 1e11);
             this.$nextTick(() => this.render());
+        },
+        openCamera() {
+            this.cameraOpen = true;
+            this.$nextTick(() => {
+                if (typeof Html5Qrcode === 'undefined') return;
+                this._scanner = new Html5Qrcode('barcode-camera-reader');
+                this._scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 15, qrbox: { width: 280, height: 100 },
+                      formatsToSupport: [
+                          Html5QrcodeSupportedFormats.CODE_128,
+                          Html5QrcodeSupportedFormats.EAN_13,
+                          Html5QrcodeSupportedFormats.EAN_8,
+                          Html5QrcodeSupportedFormats.CODE_39,
+                          Html5QrcodeSupportedFormats.UPC_A,
+                          Html5QrcodeSupportedFormats.UPC_E,
+                      ]
+                    },
+                    (code) => { this.closeCamera(); this.barcode = code; this.$nextTick(() => this.render()); },
+                    () => {}
+                ).catch(() => { this.cameraOpen = false; });
+            });
+        },
+        closeCamera() {
+            if (this._scanner) { this._scanner.stop().catch(() => {}); this._scanner = null; }
+            this.cameraOpen = false;
         },
         init() { this.$nextTick(() => this.render()); }
     };

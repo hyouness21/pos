@@ -19,11 +19,40 @@
 
     {{-- Custom mode --}}
     <div x-show="mode === 'custom'">
-        <input type="text" name="barcode" x-ref="customInput"
-               x-model="barcode" @input="render()"
-               placeholder="{{ __('Type or scan your barcode') }}"
-               class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+        <div class="flex gap-2">
+            <input type="text" name="barcode" x-ref="customInput"
+                   x-model="barcode" @input="render()"
+                   placeholder="{{ __('Type or scan your barcode') }}"
+                   class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-mono">
+            <button type="button" @click="openCamera()"
+                    class="shrink-0 flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-3 py-2.5 rounded-xl text-sm transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                {{ __('Scan') }}
+            </button>
+        </div>
         <p class="text-xs text-gray-400 mt-1">{{ __('Type any number or text, or scan with a barcode scanner.') }}</p>
+    </div>
+
+    {{-- Camera modal --}}
+    <div x-show="cameraOpen" x-cloak
+         class="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4"
+         @keydown.escape.window="closeCamera()">
+        <div class="bg-white rounded-2xl overflow-hidden w-full max-w-sm shadow-2xl">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <span class="font-semibold text-gray-800 text-sm">{{ __('Scan Barcode') }}</span>
+                <button type="button" @click="closeCamera()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="barcode-camera-reader" class="w-full"></div>
+            <p class="text-xs text-gray-400 text-center py-3">{{ __('Point camera at a barcode') }}</p>
+        </div>
     </div>
 
     {{-- Random mode --}}
