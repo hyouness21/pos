@@ -8,9 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
-    public function create(array $data, array $lines): Invoice
+    public function create(array $data, array $lines, ?string $invoiceDate = null): Invoice
     {
-        return DB::transaction(function () use ($data, $lines) {
+        return DB::transaction(function () use ($data, $lines, $invoiceDate) {
             $total = 0;
             foreach ($lines as $line) {
                 $total += $line['unit_price'] * $line['quantity'];
@@ -27,6 +27,13 @@ class InvoiceService
                 'amount_paid'    => $data['payment_method'] === 'cash' ? $grandTotal : 0,
                 'notes'          => $data['notes'] ?? null,
             ]);
+
+            if ($invoiceDate) {
+                $invoice->timestamps = false;
+                $invoice->created_at = \Carbon\Carbon::parse($invoiceDate)->setTimeFrom(now());
+                $invoice->save();
+                $invoice->timestamps = true;
+            }
 
             foreach ($lines as $line) {
                 $invoice->items()->create([

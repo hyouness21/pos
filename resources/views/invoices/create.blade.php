@@ -86,6 +86,12 @@
         </div>
 
         <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Date') }}</label>
+            <input type="date" x-model="invoiceDate" max="{{ date('Y-m-d') }}"
+                   class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Notes') }}</label>
             <textarea x-model="notes" rows="2"
                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"></textarea>
@@ -291,6 +297,7 @@
         <input type="hidden" name="new_customer_name" :value="newCustomer ? newName : ''">
         <input type="hidden" name="new_customer_phone" :value="newCustomer && newPhone ? dialCode + newPhone : ''">
         <input type="hidden" name="new_customer_address" :value="newCustomer ? newAddress : ''">
+        <input type="hidden" name="invoice_date" :value="invoiceDate">
         <input type="hidden" name="payment_method" :value="paymentMethod">
         <input type="hidden" name="notes" :value="notes">
         <input type="hidden" name="discount" :value="discountAmount().toFixed(2)">
@@ -354,6 +361,7 @@ function invoiceBuilder(categories) {
         ],
         newPhone: '',
         newAddress: '',
+        invoiceDate: new Date().toISOString().slice(0, 10),
         paymentMethod: 'cash',
         notes: '',
         lines: [],

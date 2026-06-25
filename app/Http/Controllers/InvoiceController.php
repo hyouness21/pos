@@ -64,6 +64,7 @@ class InvoiceController extends Controller
             'lines.*.quantity'     => 'required|integer|min:1',
             'lines.*.unit_price'   => 'required|numeric|min:0',
             'discount'             => 'nullable|numeric|min:0',
+            'invoice_date'         => 'nullable|date|before_or_equal:today',
         ]);
 
         if ($request->filled('new_customer_name')) {
@@ -81,7 +82,7 @@ class InvoiceController extends Controller
             $request->merge(['customer_id' => $customer->id]);
         }
 
-        $invoice = $service->create($request->only(['customer_id', 'payment_method', 'notes', 'discount']), $request->lines);
+        $invoice = $service->create($request->only(['customer_id', 'payment_method', 'notes', 'discount']), $request->lines, $request->invoice_date);
 
         return redirect()->route('invoices.show', $invoice)->with('success', 'Invoice created.');
     }
@@ -164,7 +165,12 @@ class InvoiceController extends Controller
         }
 
         $pdf = Pdf::loadHTML($html)->setPaper('a5', 'portrait');
-        return $pdf->download("invoice-{$invoice->id}.pdf");
+        $filename = "invoice-{$invoice->id}.pdf";
+
+        return response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 
     public function destroy(Invoice $invoice): RedirectResponse

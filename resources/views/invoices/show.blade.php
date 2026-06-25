@@ -129,6 +129,20 @@
             <span class="font-bold text-gray-700 text-lg">{{ __('Total') }}</span>
             <span class="font-bold text-indigo-600 text-2xl" style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($invoice->total_amount, 2) }}</span>
         </div>
+        @php
+            $earning = $invoice->items->sum(function ($line) {
+                if ($line->unit_price == 0 || $line->item->cost_price === null) return 0;
+                return ($line->unit_price - $line->item->cost_price) * $line->quantity;
+            });
+        @endphp
+        @if ($earning != 0)
+        <div class="flex justify-between items-center text-sm border-t border-dashed border-gray-200 pt-2">
+            <span class="{{ $earning >= 0 ? 'text-green-600' : 'text-red-500' }} font-medium">{{ __('Earnings') }}</span>
+            <span class="{{ $earning >= 0 ? 'text-green-600' : 'text-red-500' }} font-bold" style="direction:ltr;unicode-bidi:bidi-override">
+                {{ $earning >= 0 ? '+' : '' }}${{ number_format($earning, 2) }}
+            </span>
+        </div>
+        @endif
         @if ($invoice->status === 'pending')
             @if ($invoice->amount_paid > 0)
             <div class="flex justify-between items-center text-sm">
