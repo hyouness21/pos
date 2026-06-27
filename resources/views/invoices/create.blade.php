@@ -3,7 +3,7 @@
 
 @section('content')
 
-<div x-data="invoiceBuilder({{ $categories->toJson() }})" class="space-y-4">
+<div x-data="invoiceBuilder({{ $categories->toJson() }}, {{ $customers->toJson() }})" class="space-y-4">
 
     {{-- Customer & Payment --}}
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">
@@ -11,20 +11,38 @@
         <div>
             <div class="flex items-center justify-between mb-1">
                 <label class="block text-sm font-medium text-gray-700">{{ __('Customer *') }}</label>
-                <button type="button" @click="newCustomer = !newCustomer; customerId = ''; newName = ''; newPhone = ''; newAddress = ''"
+                <button type="button" @click="newCustomer = !newCustomer; customerId = ''; customerSearch = ''; customerOpen = false; newName = ''; newPhone = ''; newAddress = ''"
                         class="text-xs font-medium text-indigo-600 active:opacity-70">
                     <span x-text="newCustomer ? '{{ __('← Select existing') }}' : '{{ __('+ New customer') }}'"></span>
                 </button>
             </div>
 
-            {{-- Existing customer dropdown --}}
-            <select x-show="!newCustomer" x-model="customerId"
-                    class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
-                <option value="">{{ __('Select customer') }}</option>
-                @foreach ($customers as $customer)
-                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                @endforeach
-            </select>
+            {{-- Existing customer searchable dropdown --}}
+            <div x-show="!newCustomer" class="relative" @click.outside="customerOpen = false">
+                <input type="text" x-model="customerSearch"
+                       @focus="customerOpen = true"
+                       @input="customerOpen = true; customerId = ''"
+                       placeholder="{{ __('Search customer…') }}"
+                       autocomplete="off"
+                       class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                <div x-show="customerOpen && filteredCustomers().length > 0" x-cloak
+                     class="absolute z-40 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto overscroll-contain"
+                     style="max-height:200px">
+                    <template x-for="c in filteredCustomers()" :key="c.id">
+                        <button type="button"
+                                @click="customerId = c.id; customerSearch = c.name; customerOpen = false"
+                                class="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors"
+                                :class="customerId == c.id ? 'bg-indigo-50 font-semibold text-indigo-700' : 'text-gray-800'">
+                            <span x-text="c.name"></span>
+                            <span x-show="c.phone" x-text="' · ' + c.phone" class="text-gray-400 text-xs"></span>
+                        </button>
+                    </template>
+                </div>
+                <div x-show="customerOpen && customerSearch.trim() && filteredCustomers().length === 0" x-cloak
+                     class="absolute z-40 left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-400">
+                    {{ __('No customers found') }}
+                </div>
+            </div>
 
             {{-- New customer mini-form --}}
             <div x-show="newCustomer" class="space-y-2">
@@ -320,11 +338,14 @@
 </div>
 
 <script>
-function invoiceBuilder(categories) {
+function invoiceBuilder(categories, customers) {
     return {
         categories,
+        customers,
         activeCategory: categories.length ? categories[0].id : null,
         customerId: '',
+        customerSearch: '',
+        customerOpen: false,
         newCustomer: {{ $errors->has('new_customer_phone') ? 'true' : 'false' }},
         newName: '{{ old('new_customer_name', '') }}',
         dialCode: '+961',
@@ -426,6 +447,14 @@ function invoiceBuilder(categories) {
                 this.scanMsg = '{{ __('Barcode not found') }}: ' + code;
             }
             this._scanTimer = setTimeout(() => this.scanMsg = '', 2500);
+        },
+
+        filteredCustomers() {
+            const q = this.customerSearch.trim().toLowerCase();
+            if (!q) return this.customers;
+            return this.customers.filter(c =>
+                c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))
+            );
         },
 
         filteredItems() {

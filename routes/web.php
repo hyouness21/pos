@@ -63,6 +63,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dealers/{dealer}/purchases/create', [DealerPurchaseController::class, 'create'])->name('dealer-purchases.create');
     Route::post('/dealers/{dealer}/purchases', [DealerPurchaseController::class, 'store'])->name('dealer-purchases.store');
     Route::get('/dealer-purchases/{dealerPurchase}', [DealerPurchaseController::class, 'show'])->name('dealer-purchases.show');
+    Route::get('/dealer-purchases/{dealerPurchase}/edit', [DealerPurchaseController::class, 'edit'])->name('dealer-purchases.edit');
+    Route::put('/dealer-purchases/{dealerPurchase}', [DealerPurchaseController::class, 'update'])->name('dealer-purchases.update');
     Route::delete('/dealer-purchases/{dealerPurchase}', [DealerPurchaseController::class, 'destroy'])->name('dealer-purchases.destroy');
 
     // Expenses

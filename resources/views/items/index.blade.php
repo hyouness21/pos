@@ -14,7 +14,7 @@
 @section('content')
 
 {{-- Search --}}
-<form method="GET" class="relative mb-3">
+<form id="item-filter" method="GET" class="relative mb-3">
     @foreach(request()->except(['search','page']) as $k => $v)
         <input type="hidden" name="{{ $k }}" value="{{ $v }}">
     @endforeach
@@ -23,7 +23,7 @@
     </span>
     <input type="text" name="search" value="{{ request('search') }}"
            placeholder="{{ __('Search items…') }}"
-           oninput="clearTimeout(window._st);window._st=setTimeout(()=>this.form.submit(),400)"
+           oninput="itemFilter()"
            class="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
 </form>
 
@@ -55,22 +55,17 @@
 </div>
 
 {{-- Low stock toggle --}}
-<form method="GET" id="low-stock-form" class="mb-4">
-    @if(request('category'))
-        <input type="hidden" name="category" value="{{ request('category') }}">
-    @endif
-    @if(request('search'))
-        <input type="hidden" name="search" value="{{ request('search') }}">
-    @endif
+<div class="mb-4">
     <label class="flex items-center gap-2 text-sm cursor-pointer w-fit">
-        <input type="checkbox" name="low_stock" value="1"
-               onchange="document.getElementById('low-stock-form').submit()"
+        <input type="checkbox" id="low-stock-cb" name="low_stock" value="1"
+               onchange="itemFilter(0)"
                {{ request()->boolean('low_stock') ? 'checked' : '' }}
                class="rounded text-indigo-600">
         <span class="text-gray-600 font-medium">{{ __('Low Stock Only') }}</span>
     </label>
-</form>
+</div>
 
+<div id="item-results">
 <div class="space-y-3">
     @forelse ($items as $item)
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -133,4 +128,30 @@
 </div>
 
 {{ $items->links() }}
+</div>{{-- #item-results --}}
+
+<script>
+(function(){
+    var _t;
+    window.itemFilter = function(delay) {
+        clearTimeout(_t);
+        _t = setTimeout(function() {
+            var params = new URLSearchParams(new FormData(document.getElementById('item-filter')));
+            var cb = document.getElementById('low-stock-cb');
+            if (cb && cb.checked) params.set('low_stock', '1');
+            else params.delete('low_stock');
+            for (var [k,v] of [...params]) { if (!v) params.delete(k); }
+            var url = '?' + params.toString();
+            fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .then(function(r){return r.text();})
+                .then(function(html){
+                    var doc = new DOMParser().parseFromString(html,'text/html');
+                    var res = doc.getElementById('item-results');
+                    if (res) document.getElementById('item-results').innerHTML = res.innerHTML;
+                    history.replaceState(null,'',url||'?');
+                });
+        }, delay !== undefined ? delay : 400);
+    };
+})();
+</script>
 @endsection

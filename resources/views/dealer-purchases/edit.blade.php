@@ -1,16 +1,22 @@
 @extends('layouts.app')
-@section('title', 'New Purchase — ' . $dealer->name)
+@section('title', 'Edit Purchase #' . $dealerPurchase->id)
 
 @section('content')
 
-<div x-data="purchaseBuilder({{ $items->toJson() }}, {{ $categories->toJson() }})" class="space-y-4">
+<div x-data="purchaseEditor({{ $items->toJson() }}, {{ $categories->toJson() }}, {{ $existingLines->toJson() }}, '{{ $dealerPurchase->purchase_date->format('Y-m-d') }}', {{ json_encode($dealerPurchase->notes) }})" class="space-y-4">
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">
 
+        <div class="flex justify-between items-center text-sm">
+            <span class="text-gray-500">{{ __('Dealer') }}</span>
+            <a href="{{ route('dealers.show', $dealerPurchase->dealer) }}" class="font-medium text-indigo-600">
+                {{ $dealerPurchase->dealer->name }}
+            </a>
+        </div>
+
         <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">{{ __('Purchase Date *') }}</label>
-            <input type="date" x-model="purchaseDate" required
-                   :max="today"
+            <input type="date" x-model="purchaseDate" :max="today"
                    class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
         </div>
 
@@ -38,7 +44,6 @@
                 <input type="text" x-model="search" placeholder="{{ __('Search items…') }}"
                        class="flex-1 border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
-
             <div class="space-y-2 max-h-48 overflow-y-auto">
                 <template x-for="item in filteredItems()" :key="item.id">
                     <div class="flex items-center gap-3 border border-gray-100 rounded-xl px-3 py-2">
@@ -62,8 +67,7 @@
         <div x-show="newItemOpen" x-cloak class="space-y-3">
             <div>
                 <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Item Name *') }}</label>
-                <input type="text" x-model="ni.name"
-                       placeholder="{{ __('e.g. Coca-Cola 330ml') }}"
+                <input type="text" x-model="ni.name" placeholder="{{ __('e.g. Coca-Cola 330ml') }}"
                        autocomplete="off"
                        class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
             </div>
@@ -163,13 +167,14 @@
 
     {{-- Hidden form --}}
     <form id="purchase-form" method="POST"
-          action="{{ route('dealer-purchases.store', $dealer) }}" x-ref="form">
+          action="{{ route('dealer-purchases.update', $dealerPurchase) }}" x-ref="form">
         @csrf
+        @method('PUT')
         <input type="hidden" name="purchase_date" :value="purchaseDate">
         <input type="hidden" name="notes" :value="notes">
         <template x-for="(line, index) in lines" :key="index">
             <span>
-                <input type="hidden" :name="'lines[' + index + '][item_id]'"            :value="line.is_new ? '' : line.item_id">
+                <input type="hidden" :name="'lines[' + index + '][item_id]'"           :value="line.is_new ? '' : line.item_id">
                 <input type="hidden" :name="'lines[' + index + '][new_name]'"           :value="line.is_new ? line.new_name : ''">
                 <input type="hidden" :name="'lines[' + index + '][new_category_id]'"    :value="line.is_new ? (line.new_category_id || '') : ''">
                 <input type="hidden" :name="'lines[' + index + '][new_category_name]'"  :value="line.is_new ? (line.new_category_name || '') : ''">
@@ -185,21 +190,21 @@
             :disabled="!canSubmit()"
             :class="canSubmit() ? 'bg-indigo-600 active:scale-95' : 'bg-gray-300 cursor-not-allowed'"
             class="w-full text-white font-semibold py-3 rounded-2xl shadow transition-all">
-        <span x-text="canSubmit() ? '{{ __('Record Purchase') }} — $' + grandTotal().toFixed(2) : '{{ __('Fill all fields') }}'"></span>
+        <span x-text="canSubmit() ? '{{ __('Save Changes') }} — $' + grandTotal().toFixed(2) : '{{ __('Fill all fields') }}'"></span>
     </button>
 
 </div>
 
 <script>
-function purchaseBuilder(items, categories) {
+function purchaseEditor(items, categories, existingLines, existingDate, existingNotes) {
     return {
         items,
         categories,
         search: '',
-        purchaseDate: new Date().toISOString().split('T')[0],
+        purchaseDate: existingDate,
         today: new Date().toISOString().split('T')[0],
-        notes: '',
-        lines: [],
+        notes: existingNotes || '',
+        lines: existingLines,
 
         newItemOpen: false,
         ni: { name: '', categoryId: '', newCat: false, newCategoryName: '', price: 0, cost: 0, quantity: 1, expiryDate: '' },

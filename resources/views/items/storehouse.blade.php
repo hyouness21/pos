@@ -9,7 +9,7 @@
 @section('content')
 
 {{-- Search --}}
-<form method="GET" class="relative mb-4">
+<form id="store-filter" method="GET" class="relative mb-4">
     @foreach(request()->except(['search','page']) as $k => $v)
         <input type="hidden" name="{{ $k }}" value="{{ $v }}">
     @endforeach
@@ -18,7 +18,7 @@
     </span>
     <input type="text" name="search" value="{{ request('search') }}"
            placeholder="{{ __('Search items…') }}"
-           oninput="clearTimeout(window._st);window._st=setTimeout(()=>this.form.submit(),400)"
+           oninput="liveFilter('store-filter','store-results')"
            class="w-full border border-gray-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
 </form>
 
@@ -72,6 +72,7 @@
     @endforeach
 </div>
 
+<div id="store-results">
 {{-- Items grouped by category --}}
 @foreach ($categories as $cat)
     @php
@@ -256,5 +257,27 @@
         </div>
     </div>
 @endforeach
+</div>{{-- #store-results --}}
 
+<script>
+(function(){
+    var _t;
+    window.liveFilter = function(formId, resultsId, delay) {
+        clearTimeout(_t);
+        _t = setTimeout(function() {
+            var params = new URLSearchParams(new FormData(document.getElementById(formId)));
+            for (var [k,v] of [...params]) { if (!v) params.delete(k); }
+            var url = '?' + params.toString();
+            fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .then(function(r){return r.text();})
+                .then(function(html){
+                    var doc = new DOMParser().parseFromString(html,'text/html');
+                    var res = doc.getElementById(resultsId);
+                    if (res) document.getElementById(resultsId).innerHTML = res.innerHTML;
+                    history.replaceState(null,'',url||'?');
+                });
+        }, delay !== undefined ? delay : 400);
+    };
+})();
+</script>
 @endsection

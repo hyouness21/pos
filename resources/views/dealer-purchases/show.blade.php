@@ -41,6 +41,11 @@
     </div>
 </div>
 
+<a href="{{ route('dealer-purchases.edit', $dealerPurchase) }}"
+   class="block w-full text-center bg-white border border-indigo-200 text-indigo-600 font-semibold text-sm py-3 rounded-2xl mb-2">
+    {{ __('Edit Purchase') }}
+</a>
+
 <form method="POST" action="{{ route('dealer-purchases.destroy', $dealerPurchase) }}"
       onsubmit="return confirm('{{ __('Delete this purchase? Stock will NOT be reversed.') }}')">
     @csrf @method('DELETE')

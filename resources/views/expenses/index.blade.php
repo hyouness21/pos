@@ -82,10 +82,10 @@
 </div>
 
 {{-- Filters --}}
-<form method="GET" class="flex gap-2 mb-4 items-center">
-    <input type="date" name="date" value="{{ request('date') }}" onchange="this.form.submit()"
+<form id="exp-filter" method="GET" class="flex gap-2 mb-4 items-center">
+    <input type="date" name="date" value="{{ request('date') }}" onchange="liveFilter('exp-filter','exp-results',0)"
            class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-    <input type="month" name="month" value="{{ request('month') }}" onchange="this.form.submit()"
+    <input type="month" name="month" value="{{ request('month') }}" onchange="liveFilter('exp-filter','exp-results',0)"
            class="flex-1 border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
     @if(request()->hasAny(['date', 'month']))
         <a href="{{ route('expenses.index') }}"
@@ -93,6 +93,7 @@
     @endif
 </form>
 
+<div id="exp-results">
 {{-- Expense list --}}
 @php
     $typeColors = [
@@ -147,8 +148,31 @@
     @endforelse
 </div>
 
+</div>{{-- #exp-results --}}
+
 @if ($errors->any())
     <script>document.getElementById('add-expense').classList.remove('hidden');</script>
 @endif
 
+<script>
+(function(){
+    var _t;
+    window.liveFilter = function(formId, resultsId, delay) {
+        clearTimeout(_t);
+        _t = setTimeout(function() {
+            var params = new URLSearchParams(new FormData(document.getElementById(formId)));
+            for (var [k,v] of [...params]) { if (!v) params.delete(k); }
+            var url = '?' + params.toString();
+            fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .then(function(r){return r.text();})
+                .then(function(html){
+                    var doc = new DOMParser().parseFromString(html,'text/html');
+                    var res = doc.getElementById(resultsId);
+                    if (res) document.getElementById(resultsId).innerHTML = res.innerHTML;
+                    history.replaceState(null,'',url||'?');
+                });
+        }, delay !== undefined ? delay : 400);
+    };
+})();
+</script>
 @endsection

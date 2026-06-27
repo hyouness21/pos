@@ -4,11 +4,12 @@
 @section('content')
 
 {{-- Date picker --}}
-<form method="GET" class="mb-4">
-    <input type="date" name="date" value="{{ $data['date']->format('Y-m-d') }}" onchange="this.form.submit()"
+<form id="daily-filter" method="GET" class="mb-4">
+    <input type="date" name="date" value="{{ $data['date']->format('Y-m-d') }}" onchange="liveFilter('daily-filter','daily-results',0)"
            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
 </form>
 
+<div id="daily-results">
 {{-- Summary --}}
 <div class="grid grid-cols-3 gap-3 mb-4">
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
@@ -46,4 +47,27 @@
         <p class="text-center text-gray-400 py-10 text-sm">{{ __('No invoices on this date.') }}</p>
     @endforelse
 </div>
+</div>{{-- #daily-results --}}
+
+<script>
+(function(){
+    var _t;
+    window.liveFilter = function(formId, resultsId, delay) {
+        clearTimeout(_t);
+        _t = setTimeout(function() {
+            var params = new URLSearchParams(new FormData(document.getElementById(formId)));
+            for (var [k,v] of [...params]) { if (!v) params.delete(k); }
+            var url = '?' + params.toString();
+            fetch(url, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .then(function(r){return r.text();})
+                .then(function(html){
+                    var doc = new DOMParser().parseFromString(html,'text/html');
+                    var res = doc.getElementById(resultsId);
+                    if (res) document.getElementById(resultsId).innerHTML = res.innerHTML;
+                    history.replaceState(null,'',url||'?');
+                });
+        }, delay !== undefined ? delay : 400);
+    };
+})();
+</script>
 @endsection

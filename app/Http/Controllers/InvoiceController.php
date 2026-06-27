@@ -22,6 +22,10 @@ class InvoiceController extends Controller
             $query->where('id', $request->input('search'));
         }
 
+        if ($request->filled('customer')) {
+            $query->whereHas('customer', fn($q) => $q->where('name', 'like', '%' . $request->customer . '%'));
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

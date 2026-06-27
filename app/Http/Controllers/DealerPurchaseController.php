@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Dealer;
 use App\Models\DealerPurchase;
 use App\Models\Item;
@@ -14,24 +15,55 @@ class DealerPurchaseController extends Controller
 {
     public function create(Dealer $dealer): View
     {
-        $items = Item::with('category')->orderBy('name')->get();
-        return view('dealer-purchases.create', compact('dealer', 'items'));
+        $items      = Item::with('category')->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        return view('dealer-purchases.create', compact('dealer', 'items', 'categories'));
     }
 
     public function store(Request $request, Dealer $dealer): RedirectResponse
     {
         $request->validate([
-            'purchase_date'        => 'required|date',
-            'notes'                => 'nullable|string',
-            'lines'                => 'required|array|min:1',
-            'lines.*.item_id'      => 'required|exists:items,id',
-            'lines.*.quantity'     => 'required|integer|min:1',
-            'lines.*.unit_cost'    => 'required|numeric|min:0',
+            'purchase_date'           => 'required|date',
+            'notes'                   => 'nullable|string',
+            'lines'                   => 'required|array|min:1',
+            'lines.*.item_id'           => 'nullable|exists:items,id',
+            'lines.*.new_name'          => 'nullable|string|max:255',
+            'lines.*.new_category_id'   => 'nullable|exists:categories,id',
+            'lines.*.new_category_name' => 'nullable|string|max:255',
+            'lines.*.new_price'         => 'nullable|numeric|min:0',
+            'lines.*.expiry_date'       => 'nullable|date',
+            'lines.*.quantity'          => 'required|integer|min:1',
+            'lines.*.unit_cost'         => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $dealer) {
+        // Create any new items before the transaction
+        $lines = $request->lines;
+        foreach ($lines as &$line) {
+            if (empty($line['item_id'])) {
+                $categoryId = $line['new_category_id'] ?: null;
+
+                if (!empty($line['new_category_name'])) {
+                    $categoryId = Category::firstOrCreate(
+                        ['name' => trim($line['new_category_name'])]
+                    )->id;
+                }
+
+                $item = Item::create([
+                    'name'        => $line['new_name'],
+                    'category_id' => $categoryId,
+                    'price'       => (float) ($line['new_price'] ?? 0),
+                    'cost_price'  => (float) $line['unit_cost'],
+                    'stock'       => 0,
+                    'expiry_date' => $line['expiry_date'] ?: null,
+                ]);
+                $line['item_id'] = $item->id;
+            }
+        }
+        unset($line);
+
+        DB::transaction(function () use ($lines, $request, $dealer) {
             $total = 0;
-            foreach ($request->lines as $line) {
+            foreach ($lines as $line) {
                 $total += $line['unit_cost'] * $line['quantity'];
             }
 
@@ -41,7 +73,7 @@ class DealerPurchaseController extends Controller
                 'notes'         => $request->notes,
             ]);
 
-            foreach ($request->lines as $line) {
+            foreach ($lines as $line) {
                 $purchase->items()->create([
                     'item_id'   => $line['item_id'],
                     'quantity'  => $line['quantity'],
@@ -54,6 +86,94 @@ class DealerPurchaseController extends Controller
         });
 
         return redirect()->route('dealers.show', $dealer)->with('success', 'Purchase recorded.');
+    }
+
+    public function edit(DealerPurchase $dealerPurchase): View
+    {
+        $dealerPurchase->load('dealer', 'items.item');
+        $items      = Item::with('category')->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+
+        $existingLines = $dealerPurchase->items->map(fn($l) => [
+            'item_id'   => $l->item_id,
+            'name'      => $l->item->name,
+            'quantity'  => (int) $l->quantity,
+            'unit_cost' => (float) $l->unit_cost,
+            'is_new'    => false,
+        ])->values();
+
+        return view('dealer-purchases.edit', compact('dealerPurchase', 'items', 'categories', 'existingLines'));
+    }
+
+    public function update(Request $request, DealerPurchase $dealerPurchase): RedirectResponse
+    {
+        $request->validate([
+            'purchase_date'           => 'required|date',
+            'notes'                   => 'nullable|string',
+            'lines'                   => 'required|array|min:1',
+            'lines.*.item_id'         => 'nullable|exists:items,id',
+            'lines.*.new_name'        => 'nullable|string|max:255',
+            'lines.*.new_category_id' => 'nullable|exists:categories,id',
+            'lines.*.new_category_name' => 'nullable|string|max:255',
+            'lines.*.new_price'       => 'nullable|numeric|min:0',
+            'lines.*.expiry_date'     => 'nullable|date',
+            'lines.*.quantity'        => 'required|integer|min:1',
+            'lines.*.unit_cost'       => 'required|numeric|min:0',
+        ]);
+
+        $lines = $request->lines;
+        foreach ($lines as &$line) {
+            if (empty($line['item_id'])) {
+                $categoryId = $line['new_category_id'] ?: null;
+                if (!empty($line['new_category_name'])) {
+                    $categoryId = Category::firstOrCreate(
+                        ['name' => trim($line['new_category_name'])]
+                    )->id;
+                }
+                $item = Item::create([
+                    'name'        => $line['new_name'],
+                    'category_id' => $categoryId,
+                    'price'       => (float) ($line['new_price'] ?? 0),
+                    'cost_price'  => (float) $line['unit_cost'],
+                    'stock'       => 0,
+                    'expiry_date' => $line['expiry_date'] ?: null,
+                ]);
+                $line['item_id'] = $item->id;
+            }
+        }
+        unset($line);
+
+        DB::transaction(function () use ($lines, $request, $dealerPurchase) {
+            // Restore old stock
+            foreach ($dealerPurchase->items as $old) {
+                Item::where('id', $old->item_id)->decrement('stock', $old->quantity);
+            }
+
+            $dealerPurchase->items()->delete();
+
+            $total = 0;
+            foreach ($lines as $line) {
+                $total += $line['unit_cost'] * $line['quantity'];
+            }
+
+            $dealerPurchase->update([
+                'purchase_date' => $request->purchase_date,
+                'total_amount'  => $total,
+                'notes'         => $request->notes,
+            ]);
+
+            foreach ($lines as $line) {
+                $dealerPurchase->items()->create([
+                    'item_id'   => $line['item_id'],
+                    'quantity'  => $line['quantity'],
+                    'unit_cost' => $line['unit_cost'],
+                    'subtotal'  => $line['unit_cost'] * $line['quantity'],
+                ]);
+                Item::where('id', $line['item_id'])->increment('stock', $line['quantity']);
+            }
+        });
+
+        return redirect()->route('dealer-purchases.show', $dealerPurchase)->with('success', 'Purchase updated.');
     }
 
     public function show(DealerPurchase $dealerPurchase): View
