@@ -241,7 +241,11 @@
                         <div class="flex items-center gap-2 shrink-0">
                             <button type="button" @click="decrement(index)"
                                     class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold active:bg-gray-200">−</button>
-                            <span class="w-6 text-center font-semibold text-sm" x-text="line.quantity"></span>
+                            <input type="text" inputmode="numeric" pattern="[0-9]*"
+                                   :value="line.quantity"
+                                   @focus="$event.target.select()"
+                                   @input="let v = parseInt($event.target.value) || 1; line.quantity = Math.min(Math.max(1, v), line.stock); if (line.free_qty > line.quantity) line.free_qty = line.quantity"
+                                   class="w-14 text-center font-semibold text-base border-b-2 border-gray-300 focus:border-indigo-400 outline-none bg-transparent py-0.5">
                             <button type="button" @click="increment(index)"
                                     class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold active:bg-indigo-200">+</button>
                         </div>
@@ -335,6 +339,52 @@
         <span x-text="canSubmit() ? '{{ __('Create Invoice') }} — $' + grandTotal().toFixed(2) : '{{ __('Add items to continue') }}'"></span>
     </button>
 
+    {{-- Confirmation modal --}}
+    <div x-show="confirmOpen" x-cloak
+         class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4"
+         @keydown.escape.window="confirmOpen = false">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4"
+             @click.outside="confirmOpen = false">
+            <h2 class="font-bold text-gray-900 text-lg">{{ __('Confirm Invoice') }}</h2>
+
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between text-gray-600">
+                    <span>{{ __('Customer') }}</span>
+                    <span class="font-medium text-gray-900"
+                          x-text="newCustomer ? newName : (customers.find(c => c.id == customerId)?.name || '—')"></span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                    <span>{{ __('Items') }}</span>
+                    <span class="font-medium text-gray-900" x-text="lines.length + ' {{ __('item(s)') }}'"></span>
+                </div>
+                <div class="flex justify-between text-gray-600">
+                    <span>{{ __('Payment') }}</span>
+                    <span class="font-medium text-gray-900"
+                          x-text="paymentMethod === 'cash' ? '{{ __('Cash') }}' : '{{ __('Pay Later') }}'"></span>
+                </div>
+                <div x-show="discountAmount() > 0" class="flex justify-between text-red-500">
+                    <span>{{ __('Discount') }}</span>
+                    <span class="font-medium" x-text="'− $' + discountAmount().toFixed(2)"></span>
+                </div>
+                <div class="flex justify-between items-center pt-2 border-t border-gray-100">
+                    <span class="font-bold text-gray-700">{{ __('Total') }}</span>
+                    <span class="text-xl font-bold text-indigo-600" x-text="'$' + grandTotal().toFixed(2)"></span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-1">
+                <button type="button" @click="confirmOpen = false"
+                        class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm active:bg-gray-50">
+                    {{ __('Cancel') }}
+                </button>
+                <button type="button" @click="confirmSubmit()"
+                        class="py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm active:scale-95 transition-transform">
+                    {{ __('Confirm') }}
+                </button>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -394,6 +444,7 @@ function invoiceBuilder(categories, customers) {
         _scanTimer: null,
         cameraOpen: false,
         _scanner: null,
+        confirmOpen: false,
 
         openCamera() {
             this.cameraOpen = true;
@@ -538,9 +589,11 @@ function invoiceBuilder(categories, customers) {
         },
 
         submit() {
-            if (this.canSubmit()) {
-                this.$refs.form.submit();
-            }
+            if (this.canSubmit()) this.confirmOpen = true;
+        },
+        confirmSubmit() {
+            this.confirmOpen = false;
+            this.$refs.form.submit();
         },
     };
 }

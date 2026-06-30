@@ -6,16 +6,12 @@
     <title>Page Not Found</title>
     <style>
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f3f4f6; color: #111827; }
-        .box { text-align: center; padding: 2rem; }
-        p { font-size: 1.125rem; margin: 0.5rem 0 1.5rem; color: #6b7280; }
-        a { color: #4f46e5; text-decoration: none; font-size: 0.95rem; }
-        a:hover { text-decoration: underline; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #e0e7ff; border-top-color: #4f46e5; border-radius: 50%; animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="box">
-        <p>Page not found.</p>
-        <a href="/">Go back home</a>
-    </div>
+    <div class="spinner"></div>
+    <script>setTimeout(function(){ location.href='/'; }, 1500);</script>
 </body>
 </html>
