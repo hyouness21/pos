@@ -95,11 +95,12 @@ class DealerPurchaseController extends Controller
         $categories = Category::orderBy('name')->get();
 
         $existingLines = $dealerPurchase->items->map(fn($l) => [
-            'item_id'   => $l->item_id,
-            'name'      => $l->item->name,
-            'quantity'  => (int) $l->quantity,
-            'unit_cost' => (float) $l->unit_cost,
-            'is_new'    => false,
+            'item_id'    => $l->item_id,
+            'name'       => $l->item->name,
+            'quantity'   => (int) $l->quantity,
+            'unit_cost'  => (float) $l->unit_cost,
+            'total_paid' => round((float) $l->unit_cost * (int) $l->quantity, 2),
+            'is_new'     => false,
         ])->values();
 
         return view('dealer-purchases.edit', compact('dealerPurchase', 'items', 'categories', 'existingLines'));

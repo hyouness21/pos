@@ -98,6 +98,45 @@
 @endsection
 
 @push('scripts')
+<script>
+(function() {
+    const KEY = 'draft_' + window.location.pathname;
+    const hasErrors = {{ $errors->any() ? 'true' : 'false' }};
+
+    const isReload = (performance.getEntriesByType('navigation')[0]?.type || '') === 'reload';
+    if (!isReload) localStorage.removeItem(KEY);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('main form');
+        if (!form) return;
+        let submitting = false;
+        form.addEventListener('submit', () => { submitting = true; localStorage.removeItem(KEY); });
+        window.addEventListener('beforeunload', function() {
+            if (submitting) return;
+            const data = {};
+            form.querySelectorAll('input:not([type=file]):not([type=hidden]), textarea, select').forEach(el => {
+                if (el.name) data[el.name] = el.value;
+            });
+            localStorage.setItem(KEY, JSON.stringify(data));
+        });
+    });
+
+    document.addEventListener('alpine:initialized', function() {
+        if (!isReload || hasErrors) return;
+        const saved = localStorage.getItem(KEY);
+        if (!saved) return;
+        const form = document.querySelector('main form');
+        if (!form) return;
+        try {
+            const data = JSON.parse(saved);
+            Object.keys(data).forEach(k => {
+                const el = form.querySelector('[name="' + k + '"]:not([type=file]):not([type=hidden])');
+                if (el) { el.value = data[k]; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+            });
+        } catch(e) {}
+    });
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>

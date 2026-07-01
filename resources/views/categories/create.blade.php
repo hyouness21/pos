@@ -32,4 +32,41 @@
         {{ __('Create Category') }}
     </button>
 </form>
+
+<script>
+(function() {
+    const KEY = 'draft_' + window.location.pathname;
+    const hasErrors = {{ $errors->any() ? 'true' : 'false' }};
+
+    const isReload = (performance.getEntriesByType('navigation')[0]?.type || '') === 'reload';
+    if (!isReload) localStorage.removeItem(KEY);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('main form');
+        if (!form) return;
+        let submitting = false;
+        form.addEventListener('submit', () => { submitting = true; localStorage.removeItem(KEY); });
+        window.addEventListener('beforeunload', function() {
+            if (submitting) return;
+            const data = {};
+            form.querySelectorAll('input:not([type=file]):not([type=hidden]), textarea').forEach(el => {
+                if (el.name) data[el.name] = el.value;
+            });
+            localStorage.setItem(KEY, JSON.stringify(data));
+        });
+        if (isReload && !hasErrors) {
+            const saved = localStorage.getItem(KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    Object.keys(data).forEach(k => {
+                        const el = form.querySelector('[name="' + k + '"]:not([type=file])');
+                        if (el) el.value = data[k];
+                    });
+                } catch(e) {}
+            }
+        }
+    });
+})();
+</script>
 @endsection

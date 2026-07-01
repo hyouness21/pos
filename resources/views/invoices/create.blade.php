@@ -446,6 +446,49 @@ function invoiceBuilder(categories, customers) {
         _scanner: null,
         confirmOpen: false,
 
+        init() {
+            const key = 'draft_' + window.location.pathname;
+            const isReload = (performance.getEntriesByType('navigation')[0]?.type || '') === 'reload';
+            const hasErrors = {{ $errors->any() ? 'true' : 'false' }};
+            if (!isReload) {
+                localStorage.removeItem(key);
+            } else {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    try {
+                        const s = JSON.parse(saved);
+                        if (hasErrors) {
+                            if (s.lines) this.lines = s.lines;
+                            if (s.discountType) this.discountType = s.discountType;
+                            if (s.discountRaw !== undefined) this.discountRaw = s.discountRaw;
+                        } else {
+                            const keep = ['customerId','customerSearch','newCustomer','newName','newPhone',
+                                          'newAddress','dialCode','paymentMethod','notes','invoiceDate',
+                                          'lines','discountType','discountRaw'];
+                            for (const f of keep) { if (s[f] !== undefined) this[f] = s[f]; }
+                        }
+                        this.lines.forEach(line => {
+                            const live = this.categories.flatMap(c => c.items).find(i => i.id === line.item_id);
+                            if (live) line.stock = live.stock;
+                        });
+                    } catch(e) {}
+                }
+            }
+            let _submitting = false;
+            this._clearDraft = () => { _submitting = true; localStorage.removeItem(key); };
+            window.addEventListener('beforeunload', () => {
+                if (_submitting) return;
+                localStorage.setItem(key, JSON.stringify({
+                    customerId: this.customerId, customerSearch: this.customerSearch,
+                    newCustomer: this.newCustomer, newName: this.newName,
+                    newPhone: this.newPhone, newAddress: this.newAddress,
+                    dialCode: this.dialCode, paymentMethod: this.paymentMethod,
+                    notes: this.notes, invoiceDate: this.invoiceDate,
+                    lines: this.lines, discountType: this.discountType, discountRaw: this.discountRaw,
+                }));
+            });
+        },
+
         openCamera() {
             this.cameraOpen = true;
             this.$nextTick(() => {
@@ -592,6 +635,7 @@ function invoiceBuilder(categories, customers) {
             if (this.canSubmit()) this.confirmOpen = true;
         },
         confirmSubmit() {
+            this._clearDraft();
             this.confirmOpen = false;
             this.$refs.form.submit();
         },

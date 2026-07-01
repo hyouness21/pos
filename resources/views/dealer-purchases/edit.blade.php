@@ -92,8 +92,8 @@
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Cost Price ($)') }}</label>
-                    <input type="number" x-model.number="ni.cost" min="0" step="0.01" placeholder="0.00"
+                    <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Total Paid ($)') }}</label>
+                    <input type="number" x-model.number="ni.totalPaid" min="0" step="0.01" placeholder="0.00"
                            class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
                 <div>
@@ -102,6 +102,8 @@
                            class="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
             </div>
+            <p class="text-xs text-gray-400 -mt-1" x-show="ni.quantity > 0 && ni.totalPaid > 0"
+               x-text="'{{ __('Unit cost:') }} $' + (ni.totalPaid / ni.quantity).toFixed(4) + ' {{ __('each') }}'"></p>
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">{{ __('Quantity *') }}</label>
@@ -115,8 +117,8 @@
                 </div>
             </div>
             <button type="button" @click="addNewItem()"
-                    :disabled="!ni.name.trim() || ni.quantity < 1"
-                    :class="ni.name.trim() && ni.quantity >= 1 ? 'bg-indigo-600 active:scale-95' : 'bg-gray-300 cursor-not-allowed'"
+                    :disabled="!ni.name.trim() || ni.quantity < 1 || (!ni.newCat && !ni.categoryId) || (ni.newCat && !ni.newCategoryName.trim())"
+                    :class="ni.name.trim() && ni.quantity >= 1 && ((!ni.newCat && ni.categoryId) || (ni.newCat && ni.newCategoryName.trim())) ? 'bg-indigo-600 active:scale-95' : 'bg-gray-300 cursor-not-allowed'"
                     class="w-full text-white text-sm font-semibold py-2.5 rounded-xl transition-all">
                 {{ __('Add New Item to Purchase') }}
             </button>
@@ -148,13 +150,13 @@
                                    class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">{{ __('Unit Cost ($)') }}</label>
-                            <input type="number" x-model.number="line.unit_cost" min="0" step="0.01"
+                            <label class="block text-xs text-gray-500 mb-1">{{ __('Total Paid ($)') }}</label>
+                            <input type="number" x-model.number="line.total_paid" min="0" step="0.01"
                                    class="w-full border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
                         </div>
                     </div>
-                    <p class="text-right text-sm font-bold text-gray-700 mt-1"
-                       x-text="'{{ __('Subtotal:') }} $' + (line.quantity * line.unit_cost).toFixed(2)"></p>
+                    <p class="text-xs text-gray-400 mt-1 text-right"
+                       x-text="'{{ __('Unit cost:') }} $' + (line.quantity > 0 && line.total_paid > 0 ? (line.total_paid / line.quantity).toFixed(4) : '0.0000') + ' {{ __('each') }}'"></p>
                 </div>
             </template>
         </div>
@@ -181,7 +183,7 @@
                 <input type="hidden" :name="'lines[' + index + '][new_price]'"          :value="line.is_new ? line.new_price : ''">
                 <input type="hidden" :name="'lines[' + index + '][expiry_date]'"        :value="line.is_new ? (line.expiry_date || '') : ''">
                 <input type="hidden" :name="'lines[' + index + '][quantity]'"           :value="line.quantity">
-                <input type="hidden" :name="'lines[' + index + '][unit_cost]'"          :value="line.unit_cost">
+                <input type="hidden" :name="'lines[' + index + '][unit_cost]'"          :value="line.quantity > 0 ? line.total_paid / line.quantity : 0">
             </span>
         </template>
     </form>
@@ -207,7 +209,7 @@ function purchaseEditor(items, categories, existingLines, existingDate, existing
         lines: existingLines,
 
         newItemOpen: false,
-        ni: { name: '', categoryId: '', newCat: false, newCategoryName: '', price: 0, cost: 0, quantity: 1, expiryDate: '' },
+        ni: { name: '', categoryId: '', newCat: false, newCategoryName: '', price: 0, totalPaid: 0, quantity: 1, expiryDate: '' },
 
         filteredItems() {
             if (!this.search) return this.items;
@@ -216,18 +218,24 @@ function purchaseEditor(items, categories, existingLines, existingDate, existing
 
         addItem(item) {
             const existing = this.lines.find(l => !l.is_new && l.item_id === item.id);
-            if (existing) { existing.quantity++; return; }
+            if (existing) {
+                const unit = existing.quantity > 0 ? existing.total_paid / existing.quantity : 0;
+                existing.quantity++;
+                existing.total_paid = parseFloat((unit * existing.quantity).toFixed(2));
+                return;
+            }
             this.lines.push({
-                item_id:   item.id,
-                name:      item.name,
-                quantity:  1,
-                unit_cost: parseFloat(item.cost_price) || 0,
-                is_new:    false,
+                item_id:    item.id,
+                name:       item.name,
+                quantity:   1,
+                total_paid: parseFloat(item.cost_price) || 0,
+                is_new:     false,
             });
         },
 
         addNewItem() {
-            if (!this.ni.name.trim() || this.ni.quantity < 1) return;
+            const catOk = this.ni.newCat ? this.ni.newCategoryName.trim() : this.ni.categoryId;
+            if (!this.ni.name.trim() || this.ni.quantity < 1 || !catOk) return;
             this.lines.push({
                 item_id:           null,
                 is_new:            true,
@@ -238,20 +246,52 @@ function purchaseEditor(items, categories, existingLines, existingDate, existing
                 new_price:         this.ni.price || 0,
                 expiry_date:       this.ni.expiryDate || '',
                 quantity:          this.ni.quantity,
-                unit_cost:         this.ni.cost || 0,
+                total_paid:        this.ni.totalPaid || 0,
             });
-            this.ni = { name: '', categoryId: '', newCat: false, newCategoryName: '', price: 0, cost: 0, quantity: 1, expiryDate: '' };
+            this.ni = { name: '', categoryId: '', newCat: false, newCategoryName: '', price: 0, totalPaid: 0, quantity: 1, expiryDate: '' };
             this.newItemOpen = false;
         },
 
         removeLine(index) { this.lines.splice(index, 1); },
-        grandTotal() { return this.lines.reduce((s, l) => s + l.quantity * l.unit_cost, 0); },
+        grandTotal() { return this.lines.reduce((s, l) => s + (l.total_paid || 0), 0); },
         canSubmit() {
             return this.purchaseDate && this.lines.length > 0
-                && this.lines.every(l => l.quantity > 0 && l.unit_cost >= 0
+                && this.lines.every(l => l.quantity > 0 && (l.total_paid || 0) >= 0
                     && (l.is_new ? l.new_name.trim() : l.item_id));
         },
-        submit() { if (this.canSubmit()) this.$refs.form.submit(); },
+        init() {
+            const key = 'draft_' + window.location.pathname;
+            const isReload = (performance.getEntriesByType('navigation')[0]?.type || '') === 'reload';
+            if (!isReload) {
+                localStorage.removeItem(key);
+            } else {
+                const saved = localStorage.getItem(key);
+                if (saved) {
+                    try {
+                        const s = JSON.parse(saved);
+                        if (s.purchaseDate) this.purchaseDate = s.purchaseDate;
+                        if (s.notes !== undefined) this.notes = s.notes;
+                        if (s.lines) this.lines = s.lines;
+                    } catch(e) {}
+                }
+            }
+            let _submitting = false;
+            this._clearDraft = () => { _submitting = true; localStorage.removeItem(key); };
+            window.addEventListener('beforeunload', () => {
+                if (_submitting) return;
+                localStorage.setItem(key, JSON.stringify({
+                    purchaseDate: this.purchaseDate,
+                    notes: this.notes,
+                    lines: this.lines,
+                }));
+            });
+        },
+        submit() {
+            if (this.canSubmit()) {
+                this._clearDraft();
+                this.$refs.form.submit();
+            }
+        },
     };
 }
 </script>

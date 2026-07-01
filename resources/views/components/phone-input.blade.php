@@ -51,7 +51,8 @@ $countriesJson = json_encode(array_map(fn($c) => ['code'=>$c[0],'flag'=>$c[1],'n
     number: '{{ $existingNumber }}',
     countries: {{ $countriesJson }},
     selected() { return this.countries.find(c => c.code === this.code) || this.countries[0]; },
-    pick(c) { this.code = c.code; this.open = false; }
+    pick(c) { this.code = c.code; this.open = false; },
+    init() { this.$el.addEventListener('set-phone', e => { this.code = e.detail.code; this.number = e.detail.number; }); }
 }" @click.outside="open = false">
     <div class="flex gap-2">
 
