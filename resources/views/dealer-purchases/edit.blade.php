@@ -3,6 +3,12 @@
 
 @section('content')
 
+@if(session('debug_error'))
+    <div class="bg-red-50 border border-red-300 rounded-xl p-4 mb-4 text-xs text-red-800 break-all">
+        <strong>Error:</strong> {{ session('debug_error') }}
+    </div>
+@endif
+
 <div x-data="purchaseEditor({{ $items->toJson() }}, {{ $categories->toJson() }}, {{ $existingLines->toJson() }}, '{{ $dealerPurchase->purchase_date->format('Y-m-d') }}', {{ json_encode($dealerPurchase->notes) }})" class="space-y-4">
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">

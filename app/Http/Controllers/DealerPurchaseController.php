@@ -124,6 +124,7 @@ class DealerPurchaseController extends Controller
 
         $lines = $request->lines;
 
+        try {
         DB::transaction(function () use (&$lines, $request, $dealerPurchase) {
             // Create any new items inside the transaction so they roll back on failure
             foreach ($lines as &$line) {
@@ -178,6 +179,9 @@ class DealerPurchaseController extends Controller
                 Item::where('id', $line['item_id'])->increment('stock', $line['quantity']);
             }
         });
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('debug_error', $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+        }
 
         return redirect()->route('dealer-purchases.show', $dealerPurchase)->with('success', 'Purchase updated.');
     }
