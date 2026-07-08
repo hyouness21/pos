@@ -20,7 +20,7 @@
 <div id="cat-results">
     <div class="space-y-3">
         @forelse ($categories as $category)
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div x-data="{ open: false }" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <a href="{{ route('items.index', ['category' => $category->id]) }}"
                    class="flex items-center gap-3 p-3 active:bg-gray-50">
                     @if ($category->image)
@@ -44,12 +44,29 @@
                     <a href="{{ route('categories.edit', $category) }}"
                        class="flex-1 text-center text-sm text-indigo-600 font-medium py-2 active:bg-indigo-50">{{ __('Edit') }}</a>
                     <div class="w-px bg-gray-100"></div>
-                    <form method="POST" action="{{ route('categories.destroy', $category) }}"
-                          onsubmit="return confirm('{{ __('Delete this category?') }}')" class="flex-1">
-                        @csrf @method('DELETE')
-                        <button type="submit"
-                                class="w-full text-sm text-red-500 font-medium py-2 active:bg-red-50">{{ __('Delete') }}</button>
-                    </form>
+                    <button type="button" @click="open = true"
+                            class="flex-1 text-sm text-red-500 font-medium py-2 active:bg-red-50">{{ __('Delete') }}</button>
+                </div>
+
+                <div x-show="open" x-cloak
+                     class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+                        <h2 class="font-bold text-gray-900 text-lg">{{ __('Delete Category') }}</h2>
+                        <p class="text-sm text-gray-500">{{ __('Are you sure? This cannot be undone.') }}</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" @click="open = false"
+                                    class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                                {{ __('Cancel') }}
+                            </button>
+                            <form method="POST" action="{{ route('categories.destroy', $category) }}">
+                                @csrf @method('DELETE')
+                                <button type="submit"
+                                        class="w-full py-3 rounded-xl bg-red-500 text-white font-semibold text-sm active:scale-95 transition-transform">
+                                    {{ __('Delete') }}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
             </div>
         @empty

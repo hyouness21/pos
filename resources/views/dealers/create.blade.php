@@ -2,7 +2,8 @@
 @section('title', 'New Dealer')
 
 @section('content')
-<form method="POST" action="{{ route('dealers.store') }}" class="space-y-4">
+<div x-data="{ confirmOpen: false }">
+<form method="POST" action="{{ route('dealers.store') }}" x-ref="mainForm" class="space-y-4">
     @csrf
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-4">
@@ -35,11 +36,30 @@
 
     </div>
 
-    <button type="submit"
+    <button type="button" @click="confirmOpen = true"
             class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-2xl shadow active:scale-95 transition-transform">
         {{ __('Create Dealer') }}
     </button>
 </form>
+
+<div x-show="confirmOpen" x-cloak
+     class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+        <h2 class="font-bold text-gray-900 text-lg">{{ __('Create Dealer') }}</h2>
+        <p class="text-sm text-gray-500">{{ __('Are you sure you want to add this dealer?') }}</p>
+        <div class="grid grid-cols-2 gap-3">
+            <button type="button" @click="confirmOpen = false"
+                    class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                {{ __('Cancel') }}
+            </button>
+            <button type="button" @click="confirmOpen = false; $refs.mainForm.requestSubmit()"
+                    class="py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm active:scale-95 transition-transform">
+                {{ __('Yes, Create') }}
+            </button>
+        </div>
+    </div>
+</div>
+</div>{{-- x-data confirmOpen --}}
 
 <script>
 (function() {

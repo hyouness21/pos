@@ -12,6 +12,6 @@
 </head>
 <body>
     <div class="spinner"></div>
-    <script>setTimeout(function(){ location.reload(); }, 1500);</script>
+    <script>setTimeout(function(){ window.location.href = window.location.pathname + window.location.search; }, 1500);</script>
 </body>
 </html>

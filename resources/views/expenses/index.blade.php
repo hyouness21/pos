@@ -22,7 +22,8 @@
 
 {{-- Add expense form --}}
 <div id="add-expense" class="hidden mb-4">
-    <form method="POST" action="{{ route('expenses.store') }}"
+    <div x-data="{ expConfirm: false }">
+    <form method="POST" action="{{ route('expenses.store') }}" x-ref="expForm"
           class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
         @csrf
 
@@ -69,7 +70,7 @@
         </div>
 
         <div class="flex gap-2 pt-1">
-            <button type="submit"
+            <button type="button" @click="expConfirm = true"
                     class="flex-1 bg-indigo-600 text-white font-semibold py-2.5 rounded-xl active:scale-95 transition-transform text-sm">
                 {{ __('Record Expense') }}
             </button>
@@ -79,7 +80,25 @@
             </button>
         </div>
     </form>
-</div>
+
+    <div x-show="expConfirm" x-cloak
+         class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <h2 class="font-bold text-gray-900 text-lg">{{ __('Record Expense') }}</h2>
+            <p class="text-sm text-gray-500">{{ __('Are you sure you want to record this expense?') }}</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" @click="expConfirm = false"
+                        class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                    {{ __('Cancel') }}
+                </button>
+                <button type="button" @click="expConfirm = false; $refs.expForm.requestSubmit()"
+                        class="py-3 rounded-xl bg-indigo-600 text-white font-semibold text-sm active:scale-95 transition-transform">
+                    {{ __('Confirm') }}
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>{{-- x-data expConfirm --}}
 
 {{-- Filters --}}
 <form id="exp-filter" method="GET" class="flex gap-2 mb-4 items-center">
@@ -116,7 +135,7 @@
 
 <div class="space-y-2">
     @forelse ($expenses as $expense)
-        <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center gap-3">
+        <div x-data="{ open: false }" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center gap-3">
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-0.5">
                     <span class="text-xs px-2 py-0.5 rounded-full font-medium {{ $typeColors[$expense->type] ?? 'bg-gray-100 text-gray-600' }}">
@@ -131,15 +150,32 @@
             <p class="font-bold text-gray-900 shrink-0" style="direction:ltr;unicode-bidi:bidi-override">
                 ${{ number_format($expense->amount, 2) }}
             </p>
-            <form method="POST" action="{{ route('expenses.destroy', $expense) }}"
-                  onsubmit="return confirm('{{ __('Delete this expense?') }}')">
-                @csrf @method('DELETE')
-                <button type="submit" class="text-red-400 hover:text-red-600 p-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </form>
+            <button type="button" @click="open = true" class="text-red-400 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+
+            <div x-show="open" x-cloak
+                 class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+                    <h2 class="font-bold text-gray-900 text-lg">{{ __('Delete Expense') }}</h2>
+                    <p class="text-sm text-gray-500">{{ __('Are you sure? This cannot be undone.') }}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" @click="open = false"
+                                class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                            {{ __('Cancel') }}
+                        </button>
+                        <form method="POST" action="{{ route('expenses.destroy', $expense) }}">
+                            @csrf @method('DELETE')
+                            <button type="submit"
+                                    class="w-full py-3 rounded-xl bg-red-500 text-white font-semibold text-sm active:scale-95 transition-transform">
+                                {{ __('Delete') }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     @empty
         <div class="text-center py-16 text-gray-400">

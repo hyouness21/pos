@@ -40,14 +40,33 @@
         {{ __('Save Changes') }}
     </button>
 
-    <div class="flex gap-3">
-        <a href="{{ route('dealers.show', $dealer) }}"
-           class="flex-1 text-center text-gray-500 text-sm py-2">{{ __('Cancel') }}</a>
-        <form method="POST" action="{{ route('dealers.destroy', $dealer) }}"
-              onsubmit="return confirm('{{ __('Delete this dealer?') }}')" class="flex-1">
-            @csrf @method('DELETE')
-            <button type="submit" class="w-full text-red-500 text-sm py-2">{{ __('Delete Dealer') }}</button>
-        </form>
-    </div>
+    <a href="{{ route('dealers.show', $dealer) }}"
+       class="w-full flex items-center justify-center text-gray-500 text-sm py-2">{{ __('Cancel') }}</a>
 </form>
+
+<div x-data="{ open: false }" class="mt-2">
+    <button type="button" @click="open = true"
+            class="w-full text-red-500 text-sm py-3 font-medium">{{ __('Delete Dealer') }}</button>
+
+    <div x-show="open" x-cloak
+         class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 pb-6 px-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <h2 class="font-bold text-gray-900 text-lg">{{ __('Delete Dealer') }}</h2>
+            <p class="text-sm text-gray-500">{{ __('Are you sure? All purchases from this dealer will also be deleted.') }}</p>
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" @click="open = false"
+                        class="py-3 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm">
+                    {{ __('Cancel') }}
+                </button>
+                <form method="POST" action="{{ route('dealers.destroy', $dealer) }}">
+                    @csrf @method('DELETE')
+                    <button type="submit"
+                            class="w-full py-3 rounded-xl bg-red-500 text-white font-semibold text-sm active:scale-95 transition-transform">
+                        {{ __('Delete') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

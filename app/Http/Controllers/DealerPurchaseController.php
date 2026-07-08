@@ -36,32 +36,32 @@ class DealerPurchaseController extends Controller
             'lines.*.unit_cost'         => 'required|numeric|min:0',
         ]);
 
-        // Create any new items before the transaction
         $lines = $request->lines;
-        foreach ($lines as &$line) {
-            if (empty($line['item_id'])) {
-                $categoryId = $line['new_category_id'] ?: null;
 
-                if (!empty($line['new_category_name'])) {
-                    $categoryId = Category::firstOrCreate(
-                        ['name' => trim($line['new_category_name'])]
-                    )->id;
+        DB::transaction(function () use (&$lines, $request, $dealer) {
+            // Create any new items inside the transaction so they roll back on failure
+            foreach ($lines as &$line) {
+                if (empty($line['item_id'])) {
+                    $categoryId = $line['new_category_id'] ?: null;
+
+                    if (!empty($line['new_category_name'])) {
+                        $categoryId = Category::firstOrCreate(
+                            ['name' => trim($line['new_category_name'])]
+                        )->id;
+                    }
+
+                    $item = Item::create([
+                        'name'        => $line['new_name'],
+                        'category_id' => $categoryId,
+                        'price'       => (float) ($line['new_price'] ?? 0),
+                        'cost_price'  => (float) $line['unit_cost'],
+                        'stock'       => 0,
+                        'expiry_date' => $line['expiry_date'] ?: null,
+                    ]);
+                    $line['item_id'] = $item->id;
                 }
-
-                $item = Item::create([
-                    'name'        => $line['new_name'],
-                    'category_id' => $categoryId,
-                    'price'       => (float) ($line['new_price'] ?? 0),
-                    'cost_price'  => (float) $line['unit_cost'],
-                    'stock'       => 0,
-                    'expiry_date' => $line['expiry_date'] ?: null,
-                ]);
-                $line['item_id'] = $item->id;
             }
-        }
-        unset($line);
-
-        DB::transaction(function () use ($lines, $request, $dealer) {
+            unset($line);
             $total = 0;
             foreach ($lines as $line) {
                 $total += $line['unit_cost'] * $line['quantity'];
@@ -123,31 +123,36 @@ class DealerPurchaseController extends Controller
         ]);
 
         $lines = $request->lines;
-        foreach ($lines as &$line) {
-            if (empty($line['item_id'])) {
-                $categoryId = $line['new_category_id'] ?: null;
-                if (!empty($line['new_category_name'])) {
-                    $categoryId = Category::firstOrCreate(
-                        ['name' => trim($line['new_category_name'])]
-                    )->id;
-                }
-                $item = Item::create([
-                    'name'        => $line['new_name'],
-                    'category_id' => $categoryId,
-                    'price'       => (float) ($line['new_price'] ?? 0),
-                    'cost_price'  => (float) $line['unit_cost'],
-                    'stock'       => 0,
-                    'expiry_date' => $line['expiry_date'] ?: null,
-                ]);
-                $line['item_id'] = $item->id;
-            }
-        }
-        unset($line);
 
-        DB::transaction(function () use ($lines, $request, $dealerPurchase) {
-            // Restore old stock
+        DB::transaction(function () use (&$lines, $request, $dealerPurchase) {
+            // Create any new items inside the transaction so they roll back on failure
+            foreach ($lines as &$line) {
+                if (empty($line['item_id'])) {
+                    $categoryId = $line['new_category_id'] ?: null;
+                    if (!empty($line['new_category_name'])) {
+                        $categoryId = Category::firstOrCreate(
+                            ['name' => trim($line['new_category_name'])]
+                        )->id;
+                    }
+                    $item = Item::create([
+                        'name'        => $line['new_name'],
+                        'category_id' => $categoryId,
+                        'price'       => (float) ($line['new_price'] ?? 0),
+                        'cost_price'  => (float) $line['unit_cost'],
+                        'stock'       => 0,
+                        'expiry_date' => $line['expiry_date'] ?: null,
+                    ]);
+                    $line['item_id'] = $item->id;
+                }
+            }
+            unset($line);
+
+            // Restore old stock, clamped to 0 to avoid unsigned integer underflow
             foreach ($dealerPurchase->items as $old) {
-                Item::where('id', $old->item_id)->decrement('stock', $old->quantity);
+                DB::statement(
+                    'UPDATE items SET stock = GREATEST(0, stock - ?) WHERE id = ?',
+                    [(int) $old->quantity, $old->item_id]
+                );
             }
 
             $dealerPurchase->items()->delete();
