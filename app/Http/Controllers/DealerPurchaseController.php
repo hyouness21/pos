@@ -148,10 +148,10 @@ class DealerPurchaseController extends Controller
             }
             unset($line);
 
-            // Restore old stock, clamped to 0 to avoid unsigned integer underflow
+            // Cast to SIGNED before subtracting so unsigned underflow cannot occur
             foreach ($dealerPurchase->items as $old) {
                 DB::statement(
-                    'UPDATE items SET stock = GREATEST(0, stock - ?) WHERE id = ?',
+                    'UPDATE items SET stock = GREATEST(0, CAST(stock AS SIGNED) - ?) WHERE id = ?',
                     [(int) $old->quantity, $old->item_id]
                 );
             }
