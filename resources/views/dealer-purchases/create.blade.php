@@ -178,6 +178,7 @@
                 <input type="hidden" :name="'lines[' + index + '][new_price]'"          :value="line.is_new ? line.new_price : ''">
                 <input type="hidden" :name="'lines[' + index + '][expiry_date]'"        :value="line.is_new ? (line.expiry_date || '') : ''">
                 <input type="hidden" :name="'lines[' + index + '][quantity]'"           :value="line.quantity">
+                <input type="hidden" :name="'lines[' + index + '][total_paid]'"         :value="line.total_paid || 0">
                 <input type="hidden" :name="'lines[' + index + '][unit_cost]'"          :value="line.quantity > 0 ? line.total_paid / line.quantity : 0">
             </span>
         </template>

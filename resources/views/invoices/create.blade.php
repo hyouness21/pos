@@ -224,38 +224,39 @@
         <div class="space-y-3">
             <template x-for="(line, index) in lines" :key="index">
                 <div class="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                    {{-- Top row: name / qty / total / remove --}}
-                    <div class="flex items-center gap-3">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-medium text-gray-900 text-sm truncate" x-text="line.name"></p>
-                            <div class="flex items-center gap-1 mt-0.5">
-                                <span class="text-xs text-gray-400">$</span>
-                                <input type="number" x-model="line.unit_price" min="0" step="0.01"
-                                       class="w-20 text-xs border-b border-gray-300 focus:border-indigo-400 outline-none text-gray-700 bg-transparent">
-                                <span class="text-xs text-gray-400">{{ __('each') }}</span>
-                                <span x-show="parseFloat(line.unit_price) !== line.original_price" x-cloak
-                                      class="text-xs text-orange-400"
-                                      x-text="'(was $' + line.original_price.toFixed(2) + ')'"></span>
-                            </div>
+                    {{-- Row 1: name + remove --}}
+                    <div class="flex items-start justify-between mb-2">
+                        <p class="font-medium text-gray-900 text-sm leading-snug flex-1 min-w-0 pr-2" x-text="line.name"></p>
+                        <button type="button" @click="removeLine(index)"
+                                class="text-red-400 shrink-0 mt-0.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    {{-- Row 2: price | qty stepper | line total --}}
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span class="text-xs text-gray-400">$</span>
+                            <input type="number" x-model="line.unit_price" min="0" step="0.01"
+                                   class="w-16 text-sm border-b border-gray-300 focus:border-indigo-400 outline-none text-gray-700 bg-transparent">
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex items-center gap-1.5 flex-1 justify-center">
                             <button type="button" @click="decrement(index)"
                                     class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-bold active:bg-gray-200">−</button>
                             <input type="text" inputmode="numeric" pattern="[0-9]*"
                                    :value="line.quantity"
                                    @focus="$event.target.select()"
                                    @input="let v = parseInt($event.target.value) || 1; line.quantity = Math.min(Math.max(1, v), line.stock); if (line.free_qty > line.quantity) line.free_qty = line.quantity"
-                                   class="w-14 text-center font-semibold text-base border-b-2 border-gray-300 focus:border-indigo-400 outline-none bg-transparent py-0.5">
+                                   class="w-10 text-center font-semibold text-base border-b-2 border-gray-300 focus:border-indigo-400 outline-none bg-transparent py-0.5">
                             <button type="button" @click="increment(index)"
                                     class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold active:bg-indigo-200">+</button>
                         </div>
-                        <p class="w-16 text-right font-bold text-gray-900 text-sm shrink-0"
+                        <p class="font-bold text-gray-900 text-sm shrink-0 min-w-[3.5rem] text-right"
                            x-text="'$' + lineTotal(line).toFixed(2)"></p>
-                        <button type="button" @click="removeLine(index)"
-                                class="text-red-400 hover:text-red-600 shrink-0">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                        </button>
                     </div>
+                    {{-- Price changed indicator --}}
+                    <div x-show="parseFloat(line.unit_price) !== line.original_price" x-cloak
+                         class="mt-1 text-xs text-orange-400"
+                         x-text="'(was $' + line.original_price.toFixed(2) + ' each)'"></div>
                     {{-- Free quantity row --}}
                     <div class="flex items-center gap-2 mt-2 pl-0.5">
                         <span class="text-xs text-gray-400">🎁 {{ __('Free') }}:</span>

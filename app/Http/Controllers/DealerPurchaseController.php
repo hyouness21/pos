@@ -34,6 +34,7 @@ class DealerPurchaseController extends Controller
             'lines.*.expiry_date'       => 'nullable|date',
             'lines.*.quantity'          => 'required|integer|min:1',
             'lines.*.unit_cost'         => 'required|numeric|min:0',
+            'lines.*.total_paid'        => 'nullable|numeric|min:0',
         ]);
 
         $lines = $request->lines;
@@ -64,7 +65,7 @@ class DealerPurchaseController extends Controller
             unset($line);
             $total = 0;
             foreach ($lines as $line) {
-                $total += $line['unit_cost'] * $line['quantity'];
+                $total += (float) ($line['total_paid'] ?? $line['unit_cost'] * $line['quantity']);
             }
 
             $purchase = $dealer->purchases()->create([
@@ -78,7 +79,7 @@ class DealerPurchaseController extends Controller
                     'item_id'   => $line['item_id'],
                     'quantity'  => $line['quantity'],
                     'unit_cost' => $line['unit_cost'],
-                    'subtotal'  => $line['unit_cost'] * $line['quantity'],
+                    'subtotal'  => (float) ($line['total_paid'] ?? $line['unit_cost'] * $line['quantity']),
                 ]);
 
                 Item::where('id', $line['item_id'])->increment('stock', $line['quantity']);
@@ -99,7 +100,7 @@ class DealerPurchaseController extends Controller
             'name'       => $l->item->name,
             'quantity'   => (int) $l->quantity,
             'unit_cost'  => (float) $l->unit_cost,
-            'total_paid' => round((float) $l->unit_cost * (int) $l->quantity, 2),
+            'total_paid' => (float) $l->subtotal,
             'is_new'     => false,
         ])->values();
 
@@ -120,6 +121,7 @@ class DealerPurchaseController extends Controller
             'lines.*.expiry_date'     => 'nullable|date',
             'lines.*.quantity'        => 'required|integer|min:1',
             'lines.*.unit_cost'       => 'required|numeric|min:0',
+            'lines.*.total_paid'      => 'nullable|numeric|min:0',
         ]);
 
         $lines = $request->lines;
@@ -159,7 +161,7 @@ class DealerPurchaseController extends Controller
 
             $total = 0;
             foreach ($lines as $line) {
-                $total += $line['unit_cost'] * $line['quantity'];
+                $total += (float) ($line['total_paid'] ?? $line['unit_cost'] * $line['quantity']);
             }
 
             $dealerPurchase->update([
@@ -173,7 +175,7 @@ class DealerPurchaseController extends Controller
                     'item_id'   => $line['item_id'],
                     'quantity'  => $line['quantity'],
                     'unit_cost' => $line['unit_cost'],
-                    'subtotal'  => $line['unit_cost'] * $line['quantity'],
+                    'subtotal'  => (float) ($line['total_paid'] ?? $line['unit_cost'] * $line['quantity']),
                 ]);
                 Item::where('id', $line['item_id'])->increment('stock', $line['quantity']);
             }
