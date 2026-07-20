@@ -228,5 +228,16 @@
     "Discount": "خصم",
     "Scan Barcode": "مسح الباركود",
     "Point camera at a barcode": "وجّه الكاميرا نحو الباركود",
-    "Scan from camera": "مسح بالكاميرا"
+    "Scan from camera": "مسح بالكاميرا",
+    "Issue Refund": "مرتجع",
+    "Refund": "مرتجع",
+    "Refunds": "المرتجعات",
+    "Items to Refund": "المنتجات المراد إرجاعها",
+    "Refund Total": "إجمالي المرتجع",
+    "Process Refund": "تأكيد الإرجاع",
+    "Refunded": "مُرتجع",
+    "Net Total": "الإجمالي بعد الإرجاع",
+    "Max": "الحد الأقصى",
+    "Reason for refund…": "سبب الإرجاع…",
+    "refunded": "مُرتجع"
 }

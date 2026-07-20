@@ -11,16 +11,28 @@
 {{-- Summary cards --}}
 <div class="grid grid-cols-2 gap-3 mb-4">
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-2xl font-bold text-gray-900">${{ number_format($customer->totalPurchases(), 2) }}</p>
+        <p class="text-2xl font-bold text-gray-900" style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($customer->totalPurchases(), 2) }}</p>
         <p class="text-xs text-gray-500 mt-0.5">{{ __('Total Purchases') }}</p>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-        <p class="text-2xl font-bold {{ $customer->totalOwed() > 0 ? 'text-red-600' : 'text-green-600' }}">
+        <p class="text-2xl font-bold {{ $customer->totalOwed() > 0 ? 'text-red-600' : 'text-green-600' }}" style="direction:ltr;unicode-bidi:bidi-override">
             ${{ number_format($customer->totalOwed(), 2) }}
         </p>
         <p class="text-xs text-gray-500 mt-0.5">{{ __('Outstanding Debt') }}</p>
     </div>
 </div>
+
+@if ((float) $customer->credit_balance > 0)
+<div class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 mb-4 flex items-center justify-between">
+    <div>
+        <p class="text-sm font-semibold text-indigo-700">{{ __('Credit Balance') }}</p>
+        <p class="text-xs text-indigo-400 mt-0.5">{{ __('Available for future purchases') }}</p>
+    </div>
+    <p class="text-2xl font-bold text-indigo-600" style="direction:ltr;unicode-bidi:bidi-override">
+        ${{ number_format($customer->credit_balance, 2) }}
+    </p>
+</div>
+@endif
 
 {{-- Customer info --}}
 <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4 space-y-2 text-sm">

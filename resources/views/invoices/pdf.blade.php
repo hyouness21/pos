@@ -69,6 +69,8 @@
     }
     .total-label  { font-size: 12px; color: #666; margin-bottom: 2px; }
     .total-amount { font-size: 24px; font-weight: bold; }
+    .struck { text-decoration: line-through; color: #aaa; }
+    .refunded-badge { font-size: 10px; font-weight: bold; color: #dc2626; }
 
     /* ── Badges ── */
     .badge { padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
@@ -157,6 +159,14 @@
 </table>
 
 {{-- Items --}}
+@php
+    $pdfRefundedMap = [];
+    foreach ($invoice->refunds as $_r) {
+        foreach ($_r->items as $_ri) {
+            $pdfRefundedMap[$_ri->item_id] = ($pdfRefundedMap[$_ri->item_id] ?? 0) + $_ri->quantity;
+        }
+    }
+@endphp
 <div class="section-title">{{ __('Items') }}</div>
 <table class="items">
     <thead>
@@ -176,18 +186,32 @@
     </thead>
     <tbody>
         @foreach($invoice->items as $line)
-        @php $isFree = $line->unit_price == 0; @endphp
+        @php
+            $isFree = $line->unit_price == 0;
+            $rQty = $pdfRefundedMap[$line->item_id] ?? 0;
+            $fullyR = $rQty >= $line->quantity;
+            $partR  = $rQty > 0 && !$fullyR;
+            $cls    = $fullyR ? 'struck' : '';
+        @endphp
         <tr>
             @if($isAr)
-                <td class="r bold">@if($isFree){{ __('FREE') }}@else<span class="num">${{ number_format($line->subtotal, 2) }}</span>@endif</td>
-                <td class="r">@if($isFree)—@else<span class="num">${{ number_format($line->unit_price, 2) }}</span>@endif</td>
-                <td class="r">{{ $line->quantity }}</td>
-                <td class="r">{{ $line->item->name }}</td>
+                <td class="r bold {{ $cls }}">@if($isFree){{ __('FREE') }}@else<span class="num">${{ number_format($line->subtotal, 2) }}</span>@endif</td>
+                <td class="r {{ $cls }}">@if($isFree)—@else<span class="num">${{ number_format($line->unit_price, 2) }}</span>@endif</td>
+                <td class="r {{ $cls }}">{{ $line->quantity }}</td>
+                <td class="r {{ $cls }}">
+                    {{ $line->item->name }}
+                    @if($fullyR) <span class="refunded-badge">[↩ {{ __('Refunded') }}]</span>@endif
+                    @if($partR)  <span class="refunded-badge">[↩ {{ $rQty }}/{{ $line->quantity }}]</span>@endif
+                </td>
             @else
-                <td class="l">{{ $line->item->name }}</td>
-                <td class="r">{{ $line->quantity }}</td>
-                <td class="r">@if($isFree)—@else<span class="num">${{ number_format($line->unit_price, 2) }}</span>@endif</td>
-                <td class="r bold">@if($isFree){{ __('FREE') }}@else<span class="num">${{ number_format($line->subtotal, 2) }}</span>@endif</td>
+                <td class="l {{ $cls }}">
+                    {{ $line->item->name }}
+                    @if($fullyR) <span class="refunded-badge">[↩ {{ __('Refunded') }}]</span>@endif
+                    @if($partR)  <span class="refunded-badge">[↩ {{ $rQty }}/{{ $line->quantity }}]</span>@endif
+                </td>
+                <td class="r {{ $cls }}">{{ $line->quantity }}</td>
+                <td class="r {{ $cls }}">@if($isFree)—@else<span class="num">${{ number_format($line->unit_price, 2) }}</span>@endif</td>
+                <td class="r bold {{ $cls }}">@if($isFree){{ __('FREE') }}@else<span class="num">${{ number_format($line->subtotal, 2) }}</span>@endif</td>
             @endif
         </tr>
         @endforeach
@@ -195,6 +219,7 @@
 </table>
 
 {{-- Total --}}
+@php $pdfTotalRefunded = $invoice->refunds->sum('total_amount'); @endphp
 <div class="total-wrap">
     @if ($invoice->discount > 0)
     @php
@@ -208,8 +233,14 @@
         {{ __('Discount') }} ({{ $pct }}%): − <span class="num">${{ number_format($invoice->discount, 2) }}</span>
     </div>
     @endif
+    @if ($pdfTotalRefunded > 0)
+    <div style="font-size:16px; font-weight:bold; text-decoration:line-through; color:#aaa;"><span class="num">${{ number_format($invoice->total_amount, 2) }}</span></div>
+    <div class="total-label" style="margin-top:4px;">{{ __('Total') }}</div>
+    <div class="total-amount"><span class="num">${{ number_format($invoice->total_amount - $pdfTotalRefunded, 2) }}</span></div>
+    @else
     <div class="total-label">{{ __('Total') }}</div>
     <div class="total-amount"><span class="num">${{ number_format($invoice->total_amount, 2) }}</span></div>
+    @endif
     @if ($invoice->status === 'pending')
         @if ($invoice->amount_paid > 0)
         <div style="font-size:12px; color:#16a34a; margin-top:4px;">

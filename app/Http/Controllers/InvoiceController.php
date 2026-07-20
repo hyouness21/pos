@@ -147,13 +147,13 @@ class InvoiceController extends Controller
 
     public function show(Invoice $invoice): View
     {
-        $invoice->load('customer', 'items.item');
+        $invoice->load('customer', 'items.item', 'refunds.items.item');
         return view('invoices.show', compact('invoice'));
     }
 
     public function pdf(Invoice $invoice): \Illuminate\Http\Response
     {
-        $invoice->load('customer', 'items.item');
+        $invoice->load('customer', 'items.item', 'refunds.items.item');
 
         $html = view('invoices.pdf', compact('invoice'))->render();
 

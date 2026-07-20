@@ -26,4 +26,9 @@ class Invoice extends Model
     {
         return $this->hasMany(InvoiceItem::class);
     }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
+    }
 }

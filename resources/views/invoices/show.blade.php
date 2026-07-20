@@ -84,19 +84,37 @@
 @endif
 
 {{-- Line items --}}
+@php
+    $refundedQtyMap = [];
+    foreach ($invoice->refunds as $_r) {
+        foreach ($_r->items as $_ri) {
+            $refundedQtyMap[$_ri->item_id] = ($refundedQtyMap[$_ri->item_id] ?? 0) + $_ri->quantity;
+        }
+    }
+@endphp
 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
     <h2 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">{{ __('Items') }}</h2>
     <div class="space-y-3">
         @foreach ($invoice->items as $line)
-            <div class="flex items-center gap-3">
+            @php
+                $refundedQty = $refundedQtyMap[$line->item_id] ?? 0;
+                $fullyRefunded = $refundedQty >= $line->quantity;
+                $partiallyRefunded = $refundedQty > 0 && !$fullyRefunded;
+            @endphp
+            <div class="flex items-center gap-3 {{ $fullyRefunded ? 'opacity-50' : '' }}">
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <p class="font-medium text-gray-900 text-sm">{{ $line->item->name }}</p>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <p class="font-medium text-sm {{ $fullyRefunded ? 'line-through text-gray-400' : 'text-gray-900' }}">{{ $line->item->name }}</p>
                         @if ($line->unit_price == 0)
                             <span class="text-xs bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">🎁 {{ __('FREE') }}</span>
                         @endif
+                        @if ($fullyRefunded)
+                            <span class="text-xs bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">↩ {{ __('Refunded') }}</span>
+                        @elseif ($partiallyRefunded)
+                            <span class="text-xs bg-orange-100 text-orange-600 font-semibold px-2 py-0.5 rounded-full">↩ {{ $refundedQty }}/{{ $line->quantity }} {{ __('refunded') }}</span>
+                        @endif
                     </div>
-                    <p class="text-xs text-gray-500" style="direction:ltr;unicode-bidi:bidi-override">
+                    <p class="text-xs text-gray-500 {{ $fullyRefunded ? 'line-through' : '' }}" style="direction:ltr;unicode-bidi:bidi-override">
                         @if ($line->unit_price == 0)
                             × {{ $line->quantity }}
                         @else
@@ -104,7 +122,7 @@
                         @endif
                     </p>
                 </div>
-                <p class="font-bold shrink-0 {{ $line->unit_price == 0 ? 'text-green-600' : 'text-gray-900' }}" style="direction:ltr;unicode-bidi:bidi-override">
+                <p class="font-bold shrink-0 {{ $fullyRefunded ? 'line-through text-gray-400' : ($line->unit_price == 0 ? 'text-green-600' : 'text-gray-900') }}" style="direction:ltr;unicode-bidi:bidi-override">
                     {{ $line->unit_price == 0 ? __('FREE') : '$' . number_format($line->subtotal, 2) }}
                 </p>
             </div>
@@ -125,21 +143,52 @@
             <span style="direction:ltr;unicode-bidi:bidi-override">− ${{ number_format($invoice->discount, 2) }}</span>
         </div>
         @endif
+        @php $totalRefunded = $invoice->refunds->sum('total_amount'); @endphp
+        @if ($totalRefunded > 0)
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400 text-sm line-through">{{ __('Total') }}</span>
+            <span class="text-gray-400 text-base line-through" style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($invoice->total_amount, 2) }}</span>
+        </div>
+        @else
         <div class="flex justify-between items-center">
             <span class="font-bold text-gray-700 text-lg">{{ __('Total') }}</span>
             <span class="font-bold text-indigo-600 text-2xl" style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($invoice->total_amount, 2) }}</span>
         </div>
+        @endif
         @php
+            $totalRefunded = $totalRefunded ?? 0;
+
             $earning = $invoice->items->sum(function ($line) {
                 if ($line->unit_price == 0 || $line->item->cost_price === null) return 0;
                 return ($line->unit_price - $line->item->cost_price) * $line->quantity;
             });
+
+            // Subtract earnings lost to refunds
+            $refundEarningLoss = 0;
+            foreach ($invoice->refunds as $_r) {
+                foreach ($_r->items as $_ri) {
+                    if ($_ri->unit_price > 0 && $_ri->item->cost_price !== null) {
+                        $refundEarningLoss += ($_ri->unit_price - $_ri->item->cost_price) * $_ri->quantity;
+                    }
+                }
+            }
+            $netEarning = $earning - $refundEarningLoss;
         @endphp
-        @if ($earning != 0)
+        @if ($totalRefunded > 0)
+        <div class="flex justify-between items-center text-sm text-red-500 font-medium">
+            <span>{{ __('Refunded') }}</span>
+            <span style="direction:ltr;unicode-bidi:bidi-override">− ${{ number_format($totalRefunded, 2) }}</span>
+        </div>
+        <div class="flex justify-between items-center border-t border-gray-200 pt-2">
+            <span class="font-bold text-gray-700 text-lg">{{ __('Total') }}</span>
+            <span class="font-bold text-indigo-600 text-2xl" style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($invoice->total_amount - $totalRefunded, 2) }}</span>
+        </div>
+        @endif
+        @if ($netEarning != 0)
         <div class="flex justify-between items-center text-sm border-t border-dashed border-gray-200 pt-2">
-            <span class="{{ $earning >= 0 ? 'text-green-600' : 'text-red-500' }} font-medium">{{ __('Earnings') }}</span>
-            <span class="{{ $earning >= 0 ? 'text-green-600' : 'text-red-500' }} font-bold" style="direction:ltr;unicode-bidi:bidi-override">
-                {{ $earning >= 0 ? '+' : '' }}${{ number_format($earning, 2) }}
+            <span class="{{ $netEarning >= 0 ? 'text-green-600' : 'text-red-500' }} font-medium">{{ __('Earnings') }}</span>
+            <span class="{{ $netEarning >= 0 ? 'text-green-600' : 'text-red-500' }} font-bold" style="direction:ltr;unicode-bidi:bidi-override">
+                {{ $netEarning >= 0 ? '+' : '' }}${{ number_format($netEarning, 2) }}
             </span>
         </div>
         @endif
@@ -157,6 +206,48 @@
         @endif
     </div>
 </div>
+
+{{-- Refund history --}}
+@if ($invoice->refunds->isNotEmpty())
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+    <h2 class="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">{{ __('Refunds') }}</h2>
+    <div class="space-y-3">
+        @foreach ($invoice->refunds as $refund)
+        <div class="border border-gray-100 rounded-xl p-3 text-sm">
+            <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold text-gray-800">
+                    {{ $refund->type === 'cash' ? '💵 '.__('Cash') : '🏦 '.__('Credit') }}
+                </span>
+                <span class="font-bold text-red-500" style="direction:ltr;unicode-bidi:bidi-override">
+                    − ${{ number_format($refund->total_amount, 2) }}
+                </span>
+            </div>
+            <p class="text-xs text-gray-400">{{ $refund->refund_date->format('d M Y') }}</p>
+            @if ($refund->notes)
+                <p class="text-xs text-gray-500 mt-1">{{ $refund->notes }}</p>
+            @endif
+            <div class="mt-2 space-y-1">
+                @foreach ($refund->items as $ri)
+                <div class="flex justify-between text-xs text-gray-500">
+                    <span>{{ $ri->item->name }} × {{ $ri->quantity }}</span>
+                    <span style="direction:ltr;unicode-bidi:bidi-override">${{ number_format($ri->subtotal, 2) }}</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+@endif
+
+{{-- Refund button --}}
+@php $hasRefundable = $invoice->items->contains(fn($l) => $l->quantity > ($invoice->refunds->flatMap->items->where('item_id', $l->item_id)->sum('quantity'))); @endphp
+@if ($hasRefundable)
+<a href="{{ route('invoices.refunds.create', $invoice) }}"
+   class="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-200 text-red-600 font-semibold py-3 rounded-2xl mb-2 active:bg-red-100 transition-all">
+    ↩ {{ __('Issue Refund') }}
+</a>
+@endif
 
 {{-- Share via WhatsApp --}}
 <button type="button" onclick="shareInvoice()"
